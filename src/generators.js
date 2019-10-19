@@ -3,7 +3,7 @@ export function* generatorLevelThree(i) {
 }
 
 export function* generatorLevelTwo(i) {
-    return yield* generatorLevelThree(i+2)
+    return yield* generatorLevelThree(i + 2);
 }
 
 export function* generatorLevelOne(i) {
