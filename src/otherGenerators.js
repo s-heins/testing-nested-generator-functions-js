@@ -1,13 +1,13 @@
 export function* otherGeneratorLevelThree(i) {
-    return yield i + 3;
+    yield i + 3;
 }
 
 export function* otherGeneratorLevelTwo(i) {
-    return yield otherGeneratorLevelThree(i + 2)
+    yield otherGeneratorLevelThree(i + 2)
 }
 
 export function* otherGeneratorLevelOne(i) {
-    return yield otherGeneratorLevelTwo(i);
+    yield otherGeneratorLevelTwo(i);
 }
 
 console.log(otherGeneratorLevelOne(1));

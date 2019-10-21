@@ -10,6 +10,7 @@ Rough draft
   - when are we using nested generator functions?
   - generators in plain js vs redux (-saga)
     - is there this distinction `yield` vs `yield*` / parallel vs sequential execution in plain js?
+    - = is there an implication if we use `yield*` instead of `yield` in plain js, apart from testability?
   - introduction to redux(-saga)
     - usage
       - redux

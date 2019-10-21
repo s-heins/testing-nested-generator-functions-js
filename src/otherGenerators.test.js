@@ -14,6 +14,6 @@ describe('generators', () => {
         const genTwo = generator.next().value;
         const genThree = genTwo.next().value;
         const outcome = genThree.next().value;
-        assert.strictEqual(outcome.value, 6);
+        assert.strictEqual(outcome, 6);
     });
 });
