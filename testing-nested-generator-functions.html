@@ -1,0 +1,147 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.10.0/github-markdown.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.13.1/highlight.min.js">
+<link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.css" integrity="sha384-9eLZqc9ds8eNjO3TmqPeYcDj8n+Qfa4nuSiGYa6DjLNcv9BtN69ZIulL9+8CqC9Y" crossorigin="anonymous">
+<link rel="stylesheet" href="https://gitcdn.xyz/repo/goessner/mdmath/master/css/texmath.css">
+<link rel="stylesheet" href="https://gitcdn.xyz/repo/goessner/mdmath/master/css/vscode-texmath.css">
+
+</head><body>
+<a for="toc-anchor" id="testing-nested-generator-functions-in-javascript"></a><h1 id="testing-nested-generator-functions-in-javascript-1" data-line="0" class="code-line">Testing nested generator functions in JavaScript</h1>
+<ul>
+<li data-line="2" class="code-line"><a href="#testing-nested-generator-functions-in-javascript">Testing nested generator functions in JavaScript</a>
+<ul>
+<li data-line="3" class="code-line"><a href="#introduction-to-generator-functions">Introduction to generator functions</a></li>
+<li data-line="4" class="code-line"><a href="#testing-nested-generator-functions">Testing nested generator functions</a></li>
+<li data-line="5" class="code-line"><a href="#applications">Applications</a></li>
+</ul>
+</li>
+</ul>
+<!-- Rough draft
+
+- introduction to generator functions
+  - when are we using nested generator functions?
+  - generators in plain js vs redux (-saga)
+    - is there this distinction `yield` vs `yield*` / parallel vs sequential execution in plain js?
+    - = is there an implication if we use `yield*` instead of `yield` in plain js, apart from testability?
+  - introduction to redux(-saga)
+    - usage
+      - redux
+        - state management in React apps
+      - saga
+        - middleware for redux
+          - responds to actions and can throw other actions
+          - those may be used by another saga or a redux reducer
+          - the reducer then returns the new state
+        - sagas are generator functions
+- how to test generator functions
+  - just one
+  - nested generator functions
+    - with `yield`
+    - with `yield*`
+ -->
+<a for="toc-anchor" id="introduction-to-generator-functions"></a><h2 id="introduction-to-generator-functions-1" data-line="31" class="code-line">Introduction to generator functions</h2>
+<p data-line="33" class="code-line">Generator functions are an ES6 (ES2015) feature.
+They are functions that can run asynchronously and return an iterator, or more specifically, a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator">generator object</a>.
+Hence, it is possible to execute generator functions step-by-step.</p>
+<p data-line="37" class="code-line">The syntax looks like this:</p>
+<pre><code data-line="39" class="code-line language-js"><div><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">myGenerator</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> <span class="hljs-number">4</span>;
+  <span class="hljs-keyword">yield</span> <span class="hljs-number">5</span>;
+}
+</div></code></pre>
+<p data-line="46" class="code-line">When calling the iterator's <code>next()</code> method, the generator is executed until the first yield.
+Each call to <code>next</code> returns an object with a <code>value</code> which contains the output of the yield call and a <code>done</code> attribute.
+We can then run some other code and resume execution later on by calling <code>iterator.next()</code> again.
+After the last yield call, the generator will have finished.
+In its return object, <code>value</code> will be <code>undefined</code> and <code>done</code> will be <code>true</code>.</p>
+<pre><code data-line="52" class="code-line language-js"><div><span class="hljs-keyword">const</span> myIterator = myGenerator();
+
+<span class="hljs-built_in">console</span>.log(myIterator.next()); <span class="hljs-comment">// { value: 4, done: false }</span>
+<span class="hljs-built_in">console</span>.log(myIterator.next()); <span class="hljs-comment">// { value: 5, done: false }</span>
+<span class="hljs-built_in">console</span>.log(myIterator.next()); <span class="hljs-comment">// { value: undefined, done: true }</span>
+</div></code></pre>
+<p data-line="60" class="code-line">Thus, a generator can return a series of values, one for each <code>yield</code> call instead of just returning one value like a normal function.</p>
+<p data-line="62" class="code-line">To read more about generator functions, please have a look at the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*">MDN documentation</a>.</p>
+<a for="toc-anchor" id="testing-nested-generator-functions"></a><h2 id="testing-nested-generator-functions-1" data-line="64" class="code-line">Testing nested generator functions</h2>
+<p data-line="66" class="code-line">Within a generator function, we use <code>yield</code> to return a value or <code>yield*</code> to delegate execution to another generator function.
+This article will focus on how to test the latter.</p>
+<p data-line="69" class="code-line">Please have a look at the MDN documentation if you want to read more about the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield">yield</a> or <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield*">yield*</a> expressions.</p>
+<!-- For Redux Saga: While `yield` executes functions in parallel, `yield*` calls each sequentially. -->
+<p data-line="73" class="code-line">Let's look at nested generator functions in plain javascript:</p>
+<pre><code data-line="75" class="code-line language-js"><div><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">generatorLevelThree</span>(<span class="hljs-params">i : number</span>) </span>{
+    <span class="hljs-keyword">yield</span> i + <span class="hljs-number">3</span>;
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">generatorLevelTwo</span>(<span class="hljs-params">i: number</span>) </span>{
+    <span class="hljs-keyword">yield</span>* generatorLevelThree(i + <span class="hljs-number">2</span>)
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">generatorLevelOne</span>(<span class="hljs-params">i: number</span>) </span>{
+    <span class="hljs-keyword">yield</span>* generatorLevelTwo(i);
+}
+</div></code></pre>
+<p data-line="89" class="code-line">Since <code>yield*</code> passes control to the next generator function, we can access the output of <code>generatorLevelOne</code> straight with <code>generator.next().value</code> in our tests:</p>
+<pre><code data-line="91" class="code-line language-js"><div><span class="hljs-keyword">import</span> {generatorLevelOne} <span class="hljs-keyword">from</span> <span class="hljs-string">"./generators"</span>;
+<span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> assert <span class="hljs-keyword">from</span> <span class="hljs-string">"assert"</span>;
+
+describe(<span class="hljs-string">'generators'</span>, () =&gt; {
+    <span class="hljs-keyword">let</span> generator : Generator;
+
+    beforeEach(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        generator = generatorLevelOne(<span class="hljs-number">1</span>);
+    });
+
+
+    it(<span class="hljs-string">'calls the last function'</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        assert.strictEqual(generator.next().value, <span class="hljs-number">6</span>);
+    }) ;
+});
+</div></code></pre>
+<p data-line="109" class="code-line">This is useful if the subsequent generators were just created for legibility but we don't want to test these implementation details by themselves. Rather, we test the implementation of all three functions within a single step.</p>
+<p data-line="111" class="code-line">If we use <code>yield</code> instead, we can test each step by itself.</p>
+<pre><code data-line="113" class="code-line language-js"><div><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">otherGeneratorLevelThree</span>(<span class="hljs-params">i : number</span>) </span>{
+    <span class="hljs-keyword">yield</span> i + <span class="hljs-number">3</span>;
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">otherGeneratorLevelTwo</span>(<span class="hljs-params">i: number</span>) </span>{
+    <span class="hljs-keyword">yield</span> otherGeneratorLevelThree(i + <span class="hljs-number">2</span>)
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">otherGeneratorLevelOne</span>(<span class="hljs-params">i: number</span>) </span>{
+    <span class="hljs-keyword">yield</span> otherGeneratorLevelTwo(i);
+}
+</div></code></pre>
+<p data-line="127" class="code-line">This is useful all generators contain business logic that we want to test by themselves.
+In the tests, we can see that the first two generators return the next generator object in their <code>value</code>. The third generator then returns <code>6</code> as the outcome of <code>yield i + 3</code>.</p>
+<pre><code data-line="130" class="code-line language-js"><div><span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> assert <span class="hljs-keyword">from</span> <span class="hljs-string">"assert"</span>;
+<span class="hljs-keyword">import</span> {otherGeneratorLevelOne} <span class="hljs-keyword">from</span> <span class="hljs-string">"./otherGenerators"</span>;
+<span class="hljs-keyword">import</span> {describe} <span class="hljs-keyword">from</span> <span class="hljs-string">"mocha"</span>;
+
+describe(<span class="hljs-string">'generators'</span>, () =&gt; {
+    <span class="hljs-keyword">let</span> generator;
+
+    beforeEach(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        generator = otherGeneratorLevelOne(<span class="hljs-number">1</span>);
+    });
+
+
+    it(<span class="hljs-string">'calls the last function'</span>, <span class="hljs-keyword">async</span> () =&gt; {
+        <span class="hljs-keyword">const</span> genTwo = generator.next().value;
+        <span class="hljs-keyword">const</span> genThree = genTwo.next().value;
+        <span class="hljs-keyword">const</span> outcome = genThree.next().value;
+        assert.strictEqual(outcome.value, <span class="hljs-number">6</span>);
+    });
+});
+</div></code></pre>
+<a for="toc-anchor" id="applications"></a><h2 id="applications-1" data-line="152" class="code-line">Applications</h2>
+<p data-line="154" class="code-line">One possible application of nested generator functions is within Redux Saga for React applications.
+Redux takes care of state management in React apps.
+A so-called reducer reacts to an action and returns a modified state object.
+This can be useful when we want child components to communicate with each other over a global state where the traditional way of passing state as props from the parent to the child component is no longer sufficient.</p>
+<p data-line="159" class="code-line">Redux Saga now acts as middleware before the reducer: It consumes an action and produces another one which can be consumed by another saga or a reducer.
+When a saga is called within another saga, we have nested generator functions within our application.</p>
+<p data-line="162" class="code-line">This can happens for example if we have two sites for an online store.
+They both fetch information telling them what products to display.
+Then they could both call the same saga or generator function fetching more product data for a given product ID.</p>
+
+</body></html>

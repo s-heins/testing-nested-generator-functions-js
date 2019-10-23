@@ -2,9 +2,10 @@
 
 - [Testing nested generator functions in JavaScript](#testing-nested-generator-functions-in-javascript)
   - [Introduction to generator functions](#introduction-to-generator-functions)
-  - [Nested generator functions](#nested-generator-functions)
+  - [Testing nested generator functions](#testing-nested-generator-functions)
+  - [Applications](#applications)
 
-Rough draft
+<!-- Rough draft
 
 - introduction to generator functions
   - when are we using nested generator functions?
@@ -21,19 +22,18 @@ Rough draft
           - those may be used by another saga or a redux reducer
           - the reducer then returns the new state
         - sagas are generator functions
-    - difference between calling generators with `yield` or `yield*`
-      - `yield`: parallel execution
-      - `yield*`: sequential execution
 - how to test generator functions
   - just one
   - nested generator functions
     - with `yield`
     - with `yield*`
+ -->
 
 ## Introduction to generator functions
 
 Generator functions are an ES6 (ES2015) feature.
 They are functions that can run asynchronously and return an iterator, or more specifically, a [generator object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator).
+Hence, it is possible to execute generator functions step-by-step.
 
 The syntax looks like this:
 
@@ -43,8 +43,6 @@ function* myGenerator() {
   yield 5;
 }
 ```
-
-It is possible to execute generator functions step-by-step because they return an iterator:
 
 When calling the iterator's `next()` method, the generator is executed until the first yield.
 Each call to `next` returns an object with a `value` which contains the output of the yield call and a `done` attribute.
@@ -64,20 +62,12 @@ Thus, a generator can return a series of values, one for each `yield` call inste
 
 To read more about generator functions, please have a look at the [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*).
 
-## Nested generator functions
+## Testing nested generator functions
 
 Within a generator function, we use `yield` to return a value or `yield*` to delegate execution to another generator function.
 This article will focus on how to test the latter.
 
 Please have a look at the MDN documentation if you want to read more about the [yield](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield) or [yield*](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/yield*) expressions.
-
-Side note:
-One possible application of nested generator functions is within Redux Saga for React applications.
-Redux takes care of state management in React apps.
-A so-called reducer reacts to an action and returns a modified state object.
-This can be useful when we want child components to communicate with each other where the traditional way of passing state as props from the parent to the child component is no longer sufficient.
-Redux Saga now acts as middleware before the reducer: It consumes an action and produces another one which can be consumed by another saga or a reducer.
-When a saga is called within another saga, we have nested generator functions within our application.
 
 <!-- For Redux Saga: While `yield` executes functions in parallel, `yield*` calls each sequentially. -->
 
@@ -85,15 +75,15 @@ Let's look at nested generator functions in plain javascript:
 
 ```js
 export function* generatorLevelThree(i : number) {
-    return yield i + 3;
+    yield i + 3;
 }
 
 export function* generatorLevelTwo(i: number) {
-    return yield* generatorLevelThree(i + 2)
+    yield* generatorLevelThree(i + 2)
 }
 
 export function* generatorLevelOne(i: number) {
-    return yield* generatorLevelTwo(i);
+    yield* generatorLevelTwo(i);
 }
 ```
 
@@ -117,23 +107,26 @@ describe('generators', () => {
 });
 ```
 
+This is useful if the subsequent generators were just created for legibility but we don't want to test these implementation details by themselves. Rather, we test the implementation of all three functions within a single step.
+
 If we use `yield` instead, we can test each step by itself.
 
 ```js
 export function* otherGeneratorLevelThree(i : number) {
-    return yield i + 3;
+    yield i + 3;
 }
 
 export function* otherGeneratorLevelTwo(i: number) {
-    return yield otherGeneratorLevelThree(i + 2)
+    yield otherGeneratorLevelThree(i + 2)
 }
 
 export function* otherGeneratorLevelOne(i: number) {
-    return yield otherGeneratorLevelTwo(i);
+    yield otherGeneratorLevelTwo(i);
 }
 ```
 
-In the tests, we can see that the first two generators return the next generator object in its `value`. The third generator then returns `6` as the outcome of `yield i + 3`.
+This is useful all generators contain business logic that we want to test by themselves.
+In the tests, we can see that the first two generators return the next generator object in their `value`. The third generator then returns `6` as the outcome of `yield i + 3`.
 
 ```js
 import * as assert from "assert";
@@ -155,5 +148,18 @@ describe('generators', () => {
         assert.strictEqual(outcome.value, 6);
     });
 });
-
 ```
+
+## Applications
+
+One possible application of nested generator functions is within Redux Saga for React applications.
+Redux takes care of state management in React apps.
+A so-called reducer reacts to an action and returns a modified state object.
+This can be useful when we want child components to communicate with each other over a global state where the traditional way of passing state as props from the parent to the child component is no longer sufficient.
+
+Redux Saga now acts as middleware before the reducer: It consumes an action and produces another one which can be consumed by another saga or a reducer.
+When a saga is called within another saga, we have nested generator functions within our application.
+
+This can happens for example if we have two sites for an online store.
+They both fetch information telling them what products to display.
+Then they could both call the same saga or generator function fetching more product data for a given product ID.
